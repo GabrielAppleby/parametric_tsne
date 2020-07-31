@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def show_scatters(projections: np.array, labels, name: str) -> None:
+def show_scatter(projections: np.array, labels, name: str) -> None:
     """
     Plots a projection scatter plot.
     :param projections: The projections to plot.

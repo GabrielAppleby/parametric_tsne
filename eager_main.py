@@ -8,7 +8,7 @@ from eager_data_processor import DATA_NAME
 from restricted_boltzmann_machine import RBM
 from tsne_utils import estimate_low_d_joint_of_neighbors, estimate_high_d_conditional_of_neighbors, \
     high_d_conditional_to_joint
-from vis_utils import show_scatters
+from vis_utils import show_scatter
 
 MODEL_NAME: str = "ptsne"
 
@@ -112,7 +112,7 @@ def train_and_save_model():
         return low_d_representation
 
     low_d_representation = train()
-    show_scatters(low_d_representation, labels_train, "tsne_scatter")
+    show_scatter(low_d_representation, labels_train, "tsne_scatter_real")
 
 
 def main():

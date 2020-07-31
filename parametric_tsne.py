@@ -11,7 +11,7 @@ class ParametricTSNE:
     Please make sure to train the pretrainer model first.
     """
 
-    def __init__(self, layer_sizes: Iterable = (500, 500, 2000, 2), input_size: int = 784) -> None:
+    def __init__(self, layer_sizes: Iterable = (32, 64, 32, 2), input_size: int = 784) -> None:
         """
         Initializes the class by creating the layers used in pretraining and fine-tuning.
         :param layer_sizes: The number of layers to create, along with their sizes.
@@ -22,12 +22,17 @@ class ParametricTSNE:
         self.__encoder_layers = []
         self.__decoder_layers = []
         self.__encoder_layers.append(tf.keras.layers.Input(shape=self.__input_size))
-        for layer_size in layer_sizes:
+        for layer_size in layer_sizes[0:-1]:
             self.__encoder_layers.append(
                 tf.keras.layers.Dense(layer_size,
                                       activation=tf.keras.activations.relu,
                                       kernel_initializer=tf.keras.initializers.he_uniform(),
                                       bias_initializer=tf.constant_initializer(.0001)))
+        self.__encoder_layers.append(
+            tf.keras.layers.Dense(layer_sizes[-1],
+                                  activation=tf.keras.activations.linear,
+                                  kernel_initializer=tf.keras.initializers.he_uniform(),
+                                  bias_initializer=tf.constant_initializer(.0001)))
         for layer_size in list(reversed(layer_sizes[0:-1])):
             self.__decoder_layers.append(
                 tf.keras.layers.Dense(layer_size,
@@ -54,7 +59,7 @@ class ParametricTSNE:
         model = tf.keras.Model(inputs=inpt,
                                outputs=x,
                                name="parametric_tsne_pretrainer")
-        model.compile(optimizer="adam", loss='mse')
+        model.compile(optimizer="nadam", loss='mse')
         return model
 
     def tsne_model(self) -> tf.keras.Model:
@@ -67,9 +72,8 @@ class ParametricTSNE:
         x = inpt
         for encoder_layer in self.__encoder_layers[1:]:
             x = encoder_layer(x)
-        x.activation = tf.keras.activations.linear
         model = tf.keras.Model(inputs=inpt,
                                outputs=x,
                                name="parametric_tsne")
-        model.compile(optimizer="adam", loss=tsne_loss)
+        model.compile(optimizer="nadam", loss=tsne_loss)
         return model
