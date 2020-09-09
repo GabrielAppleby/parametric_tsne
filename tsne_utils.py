@@ -60,6 +60,9 @@ def estimate_high_d_conditional_of_neighbors(x):
     """
     distances = -squared_pairwise_distance(x)
     sigmas = estimate_sigmas(distances)
+    print(tf.reduce_min(sigmas))
+    print(tf.reduce_mean(sigmas))
+    print(tf.reduce_max(sigmas))
     sigmas_squared_times_two = 2. * tf.square(sigmas)
     distances_over_sigmas_squared_times_two = distances / sigmas_squared_times_two
     conditional_of_neighbors = tf.nn.softmax(distances_over_sigmas_squared_times_two, 1)
@@ -103,11 +106,8 @@ def estimate_sigmas(distances,
         current_sigmas_squared_times_two = 2. * tf.square(current_sigmas_inner)
         distances_over_sigmas_squared_times_two = distances / current_sigmas_squared_times_two
 
-        current_conditional_prob_of_neighbors = tf.nn.softmax(
+        current_conditional_prob_of_neighbors = zeroed_softmax(
             distances_over_sigmas_squared_times_two, axis=1)
-        current_conditional_prob_of_neighbors = tf.linalg.set_diag(
-            current_conditional_prob_of_neighbors,
-            tf.zeros(n, dtype=tf.float32))
 
         current_perplexity = compute_perplexity(current_conditional_prob_of_neighbors)
 
@@ -125,9 +125,17 @@ def estimate_sigmas(distances,
         return done_mask_inner, lower_bound_arr_inner, upper_bound_arr_inner, current_sigmas_inner
 
     done_mask, lower_bound_arr, upper_bound_arr, current_sigmas_out = tf.while_loop(
-        cond, body, [done_mask, lower_bound_arr, upper_bound_arr, current_sigmas])
+        cond, body, (done_mask, lower_bound_arr, upper_bound_arr, current_sigmas), maximum_iterations=(50))
 
     return current_sigmas_out
+
+
+def zeroed_softmax(x, axis=None):
+    e_x = tf.exp(x)
+    e_x = tf.linalg.set_diag(
+        e_x,
+        tf.zeros(tf.shape(x)[0], dtype=tf.float32))
+    return e_x / tf.reduce_sum(tf.exp(x), axis)
 
 
 def log2(x):
