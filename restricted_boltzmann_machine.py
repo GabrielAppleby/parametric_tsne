@@ -11,7 +11,7 @@ class RBM:
                  visible_units: int,
                  hidden_units: int,
                  linear: bool = False,
-                 num_instances: int = 300,
+                 batch_size: int = 100,
                  n_iter: int = 30,
                  initial_momentum: float = 0.5,
                  final_momentum: float = 0.9,
@@ -22,7 +22,7 @@ class RBM:
         :param visible_units: The number of visible units in the RBM.
         :param hidden_units: The number of hidden units in the RBM.
         :param linear: Whether or not the RBM is linear.
-        :param num_instances: The number of instances, in future should be batch size, but batches
+        :param batch_size: The number of instances, in future should be batch size, but batches
         not currently supported.
         :param n_iter: Number of iterations to train for.
         :param initial_momentum: The initial momentum for contrastive divergence.
@@ -32,7 +32,7 @@ class RBM:
         super().__init__()
         self.visible_units = visible_units
         self.hidden_units = hidden_units
-        self.batch_size = num_instances
+        self.batch_size = batch_size
         self.n_iter = n_iter
         self.initial_momentum = initial_momentum
         self.final_momentum = final_momentum
@@ -64,46 +64,55 @@ class RBM:
         :param x: The features to train on.
         :return: The trained model. (Allows chaining)
         """
+        n = x.shape[0]
         for i in range(self.n_iter):
-            if i <= 5:
-                momentum = self.initial_momentum
-            else:
-                momentum = self.final_momentum
-
-            hidden_prob_one = self.activation(tf.add(tf.matmul(x, self.w), self.hidden_bias))
-            hidden_states = self.sample(hidden_prob_one)
-            vis_prob = tf.nn.sigmoid(
-                tf.add(tf.matmul(hidden_states, self.w, transpose_b=True), self.visible_bias))
-            hidden_prob_two = self.activation(tf.add(tf.matmul(vis_prob, self.w), self.hidden_bias))
-
-            pos_prods = tf.matmul(x, hidden_prob_one, transpose_a=True)
-            neg_prods = tf.matmul(vis_prob, hidden_prob_two, transpose_a=True)
-
-            self.delta_w = tf.add(
-                tf.multiply(momentum, self.delta_w),
-                tf.multiply(self.learning_rate,
-                            tf.subtract(
-                                tf.divide(tf.subtract(pos_prods, neg_prods), self.batch_size),
-                                tf.multiply(self.weight_cost, self.w))))
-
-            self.delta_hidden_bias = tf.add(
-                tf.multiply(momentum, self.delta_hidden_bias),
-                tf.multiply(tf.divide(self.learning_rate, self.batch_size),
-                            tf.subtract(
-                                tf.reduce_sum(hidden_prob_one, 0),
-                                tf.reduce_sum(hidden_prob_two, 0))))
-
-            self.delta_visible_bias = tf.add(
-                tf.multiply(momentum, self.delta_visible_bias),
-                tf.multiply(tf.divide(self.learning_rate, self.batch_size),
-                            tf.subtract(
-                                tf.reduce_sum(x, 0),
-                                tf.reduce_sum(vis_prob, 0))))
-
-            self.w.assign_add(self.delta_w)
-            self.hidden_bias.assign_add(self.delta_hidden_bias)
-            self.visible_bias.assign_add(self.delta_visible_bias)
+            for start_idx in range(0, n, self.batch_size):
+                end_idx = start_idx + self.batch_size
+                if end_idx > n:
+                    print("gotcha")
+                    exit()
+                if i <= 5:
+                    momentum = self.initial_momentum
+                else:
+                    momentum = self.final_momentum
+                batch = x[start_idx:end_idx]
+                self._fit(batch, momentum)
         return self
+
+    def _fit(self, x, momentum):
+        hidden_prob_one = self.activation(tf.add(tf.matmul(x, self.w), self.hidden_bias))
+        hidden_states = self.sample(hidden_prob_one)
+        vis_prob = tf.nn.sigmoid(
+            tf.add(tf.matmul(hidden_states, self.w, transpose_b=True), self.visible_bias))
+        hidden_prob_two = self.activation(tf.add(tf.matmul(vis_prob, self.w), self.hidden_bias))
+
+        pos_prods = tf.matmul(x, hidden_prob_one, transpose_a=True)
+        neg_prods = tf.matmul(vis_prob, hidden_prob_two, transpose_a=True)
+
+        self.delta_w = tf.add(
+            tf.multiply(momentum, self.delta_w),
+            tf.multiply(self.learning_rate,
+                        tf.subtract(
+                            tf.divide(tf.subtract(pos_prods, neg_prods), self.batch_size),
+                            tf.multiply(self.weight_cost, self.w))))
+
+        self.delta_hidden_bias = tf.add(
+            tf.multiply(momentum, self.delta_hidden_bias),
+            tf.multiply(tf.divide(self.learning_rate, self.batch_size),
+                        tf.subtract(
+                            tf.reduce_sum(hidden_prob_one, 0),
+                            tf.reduce_sum(hidden_prob_two, 0))))
+
+        self.delta_visible_bias = tf.add(
+            tf.multiply(momentum, self.delta_visible_bias),
+            tf.multiply(tf.divide(self.learning_rate, self.batch_size),
+                        tf.subtract(
+                            tf.reduce_sum(x, 0),
+                            tf.reduce_sum(vis_prob, 0))))
+
+        self.w.assign_add(self.delta_w)
+        self.hidden_bias.assign_add(self.delta_hidden_bias)
+        self.visible_bias.assign_add(self.delta_visible_bias)
 
     def transform(self, x):
         """
@@ -113,6 +122,15 @@ class RBM:
         :return: The transformed features. (No chaining)
         """
         return self.activation(tf.add(tf.matmul(x, self.w), self.hidden_bias))
+
+    def transform_backwards(self, x):
+        """
+        Just for testing.
+        :param x: The features to transform.
+        :return: The transformed features. (No chaining)
+        """
+        return tf.nn.sigmoid(
+                tf.add(tf.matmul(x, self.w, transpose_b=True), self.visible_bias))
 
     def get_w(self):
         """

@@ -26,7 +26,7 @@ def process_data(
         ds_test: tf.data.Dataset,
         ds_info,
         pretraining: bool,
-        batch_size: int = 32) -> Tuple[tf.data.Dataset, tf.data.Dataset, tf.data.Dataset]:
+        batch_size: int = 100) -> Tuple[tf.data.Dataset, tf.data.Dataset, tf.data.Dataset]:
     """
     Processes all portions of the dataset.
     :param ds_train: The training portion of the dataset.

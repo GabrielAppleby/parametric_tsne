@@ -11,7 +11,7 @@ class ParametricTSNE:
     Please make sure to train the pretrainer model first.
     """
 
-    def __init__(self, layer_sizes: Iterable = (32, 64, 32, 2), input_size: int = 784) -> None:
+    def __init__(self, layer_sizes: Iterable = (500, 500, 2000, 2), input_size: int = 784) -> None:
         """
         Initializes the class by creating the layers used in pretraining and fine-tuning.
         :param layer_sizes: The number of layers to create, along with their sizes.
@@ -59,7 +59,7 @@ class ParametricTSNE:
         model = tf.keras.Model(inputs=inpt,
                                outputs=x,
                                name="parametric_tsne_pretrainer")
-        model.compile(optimizer="nadam", loss='mse')
+        model.compile(optimizer=tf.keras.optimizers.Nadam(learning_rate=0.001), loss='mse')
         return model
 
     def tsne_model(self) -> tf.keras.Model:
@@ -75,5 +75,5 @@ class ParametricTSNE:
         model = tf.keras.Model(inputs=inpt,
                                outputs=x,
                                name="parametric_tsne")
-        model.compile(optimizer="nadam", loss=tsne_loss)
+        model.compile(optimizer=tf.keras.optimizers.Nadam(), loss=tsne_loss)
         return model
